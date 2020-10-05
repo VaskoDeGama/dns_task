@@ -1,6 +1,6 @@
 # DNS task
 ## DNS client
-### Hеализовать в файле dns.js простой DNS-клиент
+### Реализовать в файле dns.js простой DNS-клиент
 DNS-клиент должен предоставлять наружу три функции:
 
 ### setResolveServer(server)
