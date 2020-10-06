@@ -1,3 +1,4 @@
+const udpServer = require('../src/udpTestServer')
 const { resolve4, resolve6, setResolveServer } = require('../src/dns')
 
 describe('DNS', () => {
@@ -116,7 +117,7 @@ describe('DNS', () => {
         }
       })
     })
-    test('not compression', done => {
+    test('not compression zero', done => {
       setResolveServer('176.103.130.130')
       resolve4('mail.google.com', (err, res) => {
         if (err) {
@@ -124,7 +125,33 @@ describe('DNS', () => {
         } else {
           console.log(res)
           expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).toBe(0)
+          done()
+        }
+      })
+    })
+    test('not compression not zero', done => {
+      setResolveServer('176.103.130.130')
+      resolve4('googlemail.l.google.com', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+          expect(Array.isArray(res)).toBeTruthy()
           expect(res.length).not.toBe(0)
+          done()
+        }
+      })
+    })
+    test('mixed types', done => {
+      setResolveServer('10.1.30.1')
+      resolve4('adservice.google.ru', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).toBe(0)
           done()
         }
       })

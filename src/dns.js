@@ -36,19 +36,20 @@ const prepareDomainNameFiled = (address) => {
 
 /**
  * Request object
- * @type Object
- * @name requestObject
- * @param {Buffer} msg - buffer of the request that is sent to the dns server
- * @param {string} id - request Id for handling response
- * @param {number} reqLength - request buffer length for parsing response
+ * @typedef {Object} requestObject
+ * @property {Buffer} msg - buffer of the request that is sent to the dns server
+ * @property {string} id - request Id for handling response
+ * @property {number} reqLength - request buffer length for parsing response
+ * @property {Buffer} domainName - buffered Domain Name Filed
  */
 
 /**
  * Generate request buffer, request id and request length
  * @param  {string} address - symbolic domain name
+ * @param {number} reqType - A or AAAA
  * @return {requestObject}
  */
-const generateReq = (address) => {
+const generateReq = (address, reqType) => {
   const reqId = Buffer.alloc(2)
   const flags = Buffer.alloc(2)
   const queryCount = Buffer.alloc(2)
@@ -66,7 +67,7 @@ const generateReq = (address) => {
   flags.write(byteTwo, 0, 'hex')
   reqId.write(id, 'hex')
   queryCount.writeIntLE(1, 1, 1)
-  type.writeIntLE(TYPE_A, 1, 1)
+  type.writeIntLE(reqType, 1, 1)
   classIn.writeIntLE(1, 1, 1)
 
   const request = Buffer.concat([reqId, flags, queryCount, rss, query, type, classIn])
@@ -74,7 +75,8 @@ const generateReq = (address) => {
   return {
     msg: request,
     id,
-    reqLength: request.length
+    reqLength: request.length,
+    domainName: query
   }
 }
 
@@ -97,27 +99,66 @@ const itDns = (res) => {
 }
 
 /**
+ * Answer object
+ * @typedef {Object} answerObject
+ * @property {Buffer} linkToName - buffer 'c0 0c' where 0c it hex offset on Domain name in request
+ * @property {number} type - record type A === 1 or AAAA === 28
+ * @property {number} dataLength - ip data  length
+ * @property {Buffer} data - buffered ip data
+ */
+
+/**
+ * Parse data from answer buffer
+ * @param  {Buffer} answer - part of dns response buffer
+ * @return {answerObject}
+ */
+const parseAnswer = (answer) => {
+  const linkToName = answer.slice(0, 2)
+  const type = answer.readUInt16BE(2)
+  const dataLength = answer.readUInt16BE(10)
+  const data = answer.slice(12, 12 + dataLength)
+
+  return {
+    linkToName,
+    type,
+    dataLength,
+    data
+  }
+}
+
+/**
  * Decoding response buffer received from dns server
  * @param {Buffer} res - response buffer received from dns server
  * @param {number} reqLength - request length for this response
+ * @param {Buffer} domainName - buffered Domain Name Filed
+ * @param {number} type - requested type
  * @return {string[]} - array of address ipv4 or empty array if nothing received
  */
-const decodeRes = (res, reqLength) => {
-  const result = []
+const decodeRes = (res, reqLength, domainName, type) => {
+  const temp = []
 
-  const answersCount = res.readInt16BE(6)
+  const answersCount = res.readUInt16BE(6)
+  const linkOnNeededDomain = Buffer.from(`c0${res.indexOf(domainName).toString(16).padStart(2, '0')}`, 'hex')
 
   if (answersCount > 0) {
-    const answers = res.slice(reqLength, res.length)
-    const oneAnswerLength = answers.length / answersCount
+    let answers = res.slice(reqLength, res.length)
 
-    for (let i = 0; i < answersCount; i++) {
-      const answer = answers.slice(i * oneAnswerLength, (i + 1) * oneAnswerLength)
-      const addrBuffer = answer.slice(oneAnswerLength - 4, oneAnswerLength)
+    while (answers.length > 0 && answers.includes(linkOnNeededDomain)) {
+      const answerStart = answers.indexOf(linkOnNeededDomain)
 
-      result.push([...addrBuffer.values()].join('.'))
+      answers = answers.slice(answerStart, answers.length)
+
+      const answer = parseAnswer(answers)
+
+      answers = answers.slice(answer.dataLength + 12, answers.length)
+
+      if (answer.type === type) {
+        temp.push(answer)
+      }
     }
   }
+
+  const result = temp.map(({ data }) => [...data.values()].join('.'))
 
   return result.sort()
 }
@@ -149,8 +190,8 @@ const resolve4 = (address, cb) => {
     if (messages.has(id) && itDns(msg)) {
       clearTimeout(timeout)
 
-      const { callback, reqLength } = messages.get(id)
-      const res = decodeRes(msg, reqLength)
+      const { callback, reqLength, domainName } = messages.get(id)
+      const res = decodeRes(msg, reqLength, domainName, TYPE_A)
 
       client.close(() => {
         callback(null, res)
@@ -159,11 +200,12 @@ const resolve4 = (address, cb) => {
   })
 
   client.on('connect', () => {
-    const { msg, id, reqLength } = generateReq(address)
+    const { msg, id, reqLength, domainName } = generateReq(address, TYPE_A)
 
     messages.set(id, {
       callback: cb,
-      reqLength
+      reqLength,
+      domainName
     })
     sendRequest(msg)
   })
