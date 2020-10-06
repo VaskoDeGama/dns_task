@@ -81,7 +81,7 @@ const decodeRes = (res, reqLength) => {
     }
   }
 
-  return result
+  return result.sort()
 }
 
 const resolve4 = (address, cb) => {
@@ -176,6 +176,5 @@ const setResolveServer = (addr) => {
 module.exports = {
   resolve4,
   resolve6,
-  setResolveServer,
-  generateReq
+  setResolveServer
 }

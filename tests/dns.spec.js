@@ -1,4 +1,4 @@
-const { resolve4, resolve6, setResolveServer, generateReq } = require('../src/dns')
+const { resolve4, resolve6, setResolveServer } = require('../src/dns')
 
 describe('DNS', () => {
   describe('SET_RESOLVE_SERVER', () => {
@@ -44,9 +44,10 @@ describe('DNS', () => {
       })
     })
     test('should be error if req timed out', done => {
-      setResolveServer('127.0.0.1:8080')
+      setResolveServer('1.1.1.1:8080')
       resolve4('google.com', (err) => {
         if (err) {
+          console.log(err)
           expect(err.message).toBe('Request timed out')
           done()
         } else {
@@ -55,7 +56,7 @@ describe('DNS', () => {
       })
     })
     test('should be something', done => {
-      setResolveServer('127.0.0.1:8080')
+      setResolveServer('1.1.1.1')
       resolve4('google.com', (err, res) => {
         if (err) {
           console.log(err)
@@ -99,16 +100,6 @@ describe('DNS', () => {
   describe('RESOLVE6', () => {
     test('will be define', () => {
       expect(resolve6).toBeDefined()
-    })
-  })
-
-  describe('reqHeader', () => {
-    test('will be define', () => {
-      expect(generateReq).toBeDefined()
-    })
-    test('will be define', () => {
-      console.log(generateReq('google.com'))
-      expect(generateReq('google.com')).toBe('')
     })
   })
 })
