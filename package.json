@@ -36,5 +36,8 @@
     "eslint-plugin-standard": "latest",
     "jest": "latest",
     "jsdoc": "latest"
+  },
+  "dependencies": {
+    "ip6addr": "^0.2.3"
   }
 }

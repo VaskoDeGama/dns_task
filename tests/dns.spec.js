@@ -1,0 +1,104 @@
+const { resolve4, resolve6, setResolveServer, generateReq } = require('../src/dns')
+
+describe('DNS', () => {
+  describe('SET_RESOLVE_SERVER', () => {
+    test('will be define', () => {
+      expect(setResolveServer).toBeDefined()
+    })
+    test('should be function', () => {
+      expect(typeof setResolveServer).toBe('function')
+    })
+    test('should set address', () => {
+      expect(setResolveServer('1.1.1.1:53')).toBe('1.1.1.1:53')
+    })
+    test('should add default port', () => {
+      expect(setResolveServer('1.1.1.1')).toBe('1.1.1.1:53')
+    })
+    test('dont should do anything if wrong input sting', () => {
+      expect(setResolveServer('1.1')).toBe(false)
+      expect(setResolveServer(4)).toBe(false)
+    })
+  })
+
+  describe('RESOLVE4', () => {
+    test('will be define', () => {
+      expect(resolve4).toBeDefined()
+    })
+    test('should be err if address not string', done => {
+      resolve4(3, (err) => {
+        if (err) {
+          done()
+        } else {
+          done()
+        }
+      })
+    })
+    test('should be err if resolveServerAddress not set', done => {
+      resolve4('google.com', (err) => {
+        if (err) {
+          expect(err.message).toBe('Resolve server Address not set')
+          done()
+        } else {
+          done()
+        }
+      })
+    })
+    test('should be error if req timed out', done => {
+      setResolveServer('127.0.0.1:8080')
+      resolve4('google.com', (err) => {
+        if (err) {
+          expect(err.message).toBe('Request timed out')
+          done()
+        } else {
+          done()
+        }
+      })
+    })
+    test('should be something', done => {
+      setResolveServer('127.0.0.1:8080')
+      resolve4('google.com', (err, res) => {
+        if (err) {
+          console.log(err)
+          done()
+        } else {
+          expect(res).toBeDefined()
+          done()
+        }
+      })
+    })
+    test('should be something from net', done => {
+      setResolveServer('8.8.8.8')
+      resolve4('google.com', (err, res) => {
+        if (err) {
+          console.log(err)
+          done()
+        } else {
+          console.log(res)
+
+          const sample = Buffer.alloc(2)
+
+          sample.writeUIntBE(0x00008180, 0, 2)
+
+          expect(res.slice(2, 4).equals(sample)).toBeTruthy()
+          done()
+        }
+      })
+    })
+  })
+
+  describe('RESOLVE6', () => {
+    test('will be define', () => {
+      expect(resolve6).toBeDefined()
+    })
+  })
+
+  describe('reqHeader', () => {
+    test('will be define', () => {
+      expect(generateReq).toBeDefined()
+    })
+    test('will be define', () => {
+      console.log(generateReq('google.com'))
+      expect(generateReq('google.com')).toBe('')
+    })
+  })
+})
