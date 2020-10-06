@@ -27,6 +27,7 @@ describe('DNS', () => {
     test('should be err if address not string', done => {
       resolve4(3, (err) => {
         if (err) {
+          expect(err.message).toBe('address should be a string')
           done()
         } else {
           done()
@@ -39,7 +40,6 @@ describe('DNS', () => {
           expect(err.message).toBe('Resolve server Address not set')
           done()
         } else {
-          done()
         }
       })
     })
@@ -51,7 +51,6 @@ describe('DNS', () => {
           expect(err.message).toBe('Request timed out')
           done()
         } else {
-          done()
         }
       })
     })
@@ -60,8 +59,19 @@ describe('DNS', () => {
       resolve4('google.com', (err, res) => {
         if (err) {
           console.log(err)
-          done()
         } else {
+          expect(res).toBeDefined()
+          done()
+        }
+      })
+    })
+    test('filtering nose', done => {
+      setResolveServer('127.0.0.1:1234')
+      resolve4('google.com', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
           expect(res).toBeDefined()
           done()
         }
@@ -72,7 +82,6 @@ describe('DNS', () => {
       resolve4('google.com', (err, res) => {
         if (err) {
           console.log(err)
-          done()
         } else {
           console.log(res)
           expect(Array.isArray(res)).toBeTruthy()
@@ -82,15 +91,40 @@ describe('DNS', () => {
       })
     })
     test('should be array with zero length if not found', done => {
-      setResolveServer('8.8.8.8')
+      setResolveServer('93.81.253.51')
       resolve4('qwerty', (err, res) => {
         if (err) {
           console.log(err)
-          done()
         } else {
           console.log(res)
           expect(Array.isArray(res)).toBeTruthy()
           expect(res.length).toBe(0)
+          done()
+        }
+      })
+    })
+    test('test moscow dns', done => {
+      setResolveServer('93.81.253.51')
+      resolve4('polka.typekit.com', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).not.toBe(0)
+          done()
+        }
+      })
+    })
+    test('not compression', done => {
+      setResolveServer('176.103.130.130')
+      resolve4('mail.google.com', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).not.toBe(0)
           done()
         }
       })

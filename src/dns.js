@@ -18,18 +18,36 @@ const RECURSION_DESIRED = 1
 const messages = new Map()
 let resolveServerAddress = null
 
-const prepareDomainNameFiled = (addr) => {
-  const parsedAddress = addr.split('.').map(item => {
+/**
+ * Prepare buffered Domain Name Filed
+ * for 'ns.itep.ru' should be '2ns4itep2ru0'
+ * @param  {string} address - symbolic domain name
+ * @return {Buffer} - contains  Domain Name Filed for query
+ */
+const prepareDomainNameFiled = (address) => {
+  const parsedAddress = address.split('.').map(item => {
     const buf = Buffer.alloc(1, item.length, 'hex')
 
     return Buffer.concat([buf, Buffer.from(item)])
   })
 
-  parsedAddress.push(Buffer.alloc(1, 0, 'hex'))
-
   return Buffer.concat(parsedAddress)
 }
 
+/**
+ * Request object
+ * @type Object
+ * @name requestObject
+ * @param {Buffer} msg - buffer of the request that is sent to the dns server
+ * @param {string} id - request Id for handling response
+ * @param {number} reqLength - request buffer length for parsing response
+ */
+
+/**
+ * Generate request buffer, request id and request length
+ * @param  {string} address - symbolic domain name
+ * @return {requestObject}
+ */
 const generateReq = (address) => {
   const reqId = Buffer.alloc(2)
   const flags = Buffer.alloc(2)
@@ -60,10 +78,30 @@ const generateReq = (address) => {
   }
 }
 
+/**
+ * Get response id from response buffer
+ * @param {Buffer} res - response buffer received from dns server
+ * @return {string} - request Id
+ */
 const getResponseId = (res) => {
   return res.slice(0, 2).toString('hex')
 }
 
+/**
+ * Check the message that it was received from dns
+ * @param {Buffer} res - received message
+ * @return {boolean}
+ */
+const itDns = (res) => {
+  return res.slice(2, 3).equals(Buffer.from('81', 'hex'))
+}
+
+/**
+ * Decoding response buffer received from dns server
+ * @param {Buffer} res - response buffer received from dns server
+ * @param {number} reqLength - request length for this response
+ * @return {string[]} - array of address ipv4 or empty array if nothing received
+ */
 const decodeRes = (res, reqLength) => {
   const result = []
 
@@ -84,9 +122,19 @@ const decodeRes = (res, reqLength) => {
   return result.sort()
 }
 
+/**
+ * Send request to dns server and parse response
+ * @param {string} address - symbolic domain name
+ * @param {function} cb - result callback
+ * @return {Error || Array}
+ */
 const resolve4 = (address, cb) => {
   if (typeof address !== 'string') {
     return cb(new Error('address should be a string'))
+  }
+
+  if (address[address.length - 1] !== '.') {
+    address += '.'
   }
 
   let timeout = null
@@ -96,19 +144,18 @@ const resolve4 = (address, cb) => {
   client.on('error', (err) => cb(err))
 
   client.on('message', (msg) => {
-    clearTimeout(timeout)
-    client.close(() => {
-      const id = getResponseId(msg)
+    const id = getResponseId(msg)
 
-      if (messages.has(id)) {
-        const { callback, reqLength } = messages.get(id)
-        const res = decodeRes(msg, reqLength)
+    if (messages.has(id) && itDns(msg)) {
+      clearTimeout(timeout)
 
+      const { callback, reqLength } = messages.get(id)
+      const res = decodeRes(msg, reqLength)
+
+      client.close(() => {
         callback(null, res)
-      } else {
-        cb(new Error('Wrong id'))
-      }
-    })
+      })
+    }
   })
 
   client.on('connect', () => {
@@ -153,23 +200,23 @@ const resolve6 = (address, cb) => {
 
 /**
  * Sets which DNS server to contact
- * @param {string} addr - IPv4 address or address with IP:PORT format
+ * @param {string} address - IPv4 address or address with IP:PORT format
  * @return {boolean || string} resolveServerAddress - for tests
  */
-const setResolveServer = (addr) => {
-  if (typeof addr !== 'string') {
+const setResolveServer = (address) => {
+  if (typeof address !== 'string') {
     return false
   }
 
-  if (!addr.includes('.') || addr.length < 7) {
+  if (!address.includes('.') || address.length < 7) {
     return false
   }
 
-  if (!addr.includes(':')) {
-    addr = addr + ':53'
+  if (!address.includes(':')) {
+    address = address + ':53'
   }
 
-  resolveServerAddress = addr
+  resolveServerAddress = address
   return resolveServerAddress
 }
 
