@@ -15,10 +15,23 @@ const RCODE_NXDOMAIN = 3
 const OPCODE_QUERY = 0
 const RECURSION_DESIRED = 1
 
+const messages = new Map()
 let resolveServerAddress = null
 
-const generateReq = (addr) => {
-  const queryId = Buffer.alloc(2)
+const prepareDomainNameFiled = (addr) => {
+  const parsedAddress = addr.split('.').map(item => {
+    const buf = Buffer.alloc(1, item.length, 'hex')
+
+    return Buffer.concat([buf, Buffer.from(item)])
+  })
+
+  parsedAddress.push(Buffer.alloc(1, 0, 'hex'))
+
+  return Buffer.concat(parsedAddress)
+}
+
+const generateReq = (address) => {
+  const reqId = Buffer.alloc(2)
   const flags = Buffer.alloc(2)
   const queryCount = Buffer.alloc(2)
   const rss = Buffer.alloc(6, 0)
@@ -29,25 +42,46 @@ const generateReq = (addr) => {
   const flagStr = (QR_QUERY.toString(2) + OPCODE_QUERY.toString(2).padStart(4, '0') + RECURSION_DESIRED.toString(2) + '00')
   const [byteOne, byteTwo] = flagStr.match(/.{4}/g)
 
-  const parsedAddress = addr.split('.').map(item => {
-    const buf = Buffer.alloc(1, item.length, 'hex')
-    const domen = Buffer.from(item)
-
-    return Buffer.concat([buf, domen])
-  })
-
-  parsedAddress.push(Buffer.alloc(1, 0, 'hex'))
-
-  const query = Buffer.concat(parsedAddress)
+  const query = prepareDomainNameFiled(address)
 
   flags.write(byteOne, 1, 'hex')
   flags.write(byteTwo, 0, 'hex')
-  queryId.write(id, 'hex')
+  reqId.write(id, 'hex')
   queryCount.writeIntLE(1, 1, 1)
   type.writeIntLE(TYPE_A, 1, 1)
   classIn.writeIntLE(1, 1, 1)
 
-  return Buffer.concat([queryId, flags, queryCount, rss, query, type, classIn])
+  const request = Buffer.concat([reqId, flags, queryCount, rss, query, type, classIn])
+
+  return {
+    msg: request,
+    id,
+    reqLength: request.length
+  }
+}
+
+const getResponseId = (res) => {
+  return res.slice(0, 2).toString('hex')
+}
+
+const decodeRes = (res, reqLength) => {
+  const result = []
+
+  const answersCount = res.readInt16BE(6)
+
+  if (answersCount > 0) {
+    const answers = res.slice(reqLength, res.length)
+    const oneAnswerLength = answers.length / answersCount
+
+    for (let i = 0; i < answersCount; i++) {
+      const answer = answers.slice(i * oneAnswerLength, (i + 1) * oneAnswerLength)
+      const addrBuffer = answer.slice(oneAnswerLength - 4, oneAnswerLength)
+
+      result.push([...addrBuffer.values()].join('.'))
+    }
+  }
+
+  return result
 }
 
 const resolve4 = (address, cb) => {
@@ -64,14 +98,26 @@ const resolve4 = (address, cb) => {
   client.on('message', (msg) => {
     clearTimeout(timeout)
     client.close(() => {
-      return cb(null, msg)
+      const id = getResponseId(msg)
+
+      if (messages.has(id)) {
+        const { callback, reqLength } = messages.get(id)
+        const res = decodeRes(msg, reqLength)
+
+        callback(null, res)
+      } else {
+        cb(new Error('Wrong id'))
+      }
     })
   })
 
   client.on('connect', () => {
-    const msg = generateReq(address)
+    const { msg, id, reqLength } = generateReq(address)
 
-    console.log(msg)
+    messages.set(id, {
+      callback: cb,
+      reqLength
+    })
     sendRequest(msg)
   })
 

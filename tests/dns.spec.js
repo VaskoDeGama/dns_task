@@ -66,7 +66,7 @@ describe('DNS', () => {
         }
       })
     })
-    test('should be something from net', done => {
+    test('should be array with not zero length', done => {
       setResolveServer('8.8.8.8')
       resolve4('google.com', (err, res) => {
         if (err) {
@@ -74,12 +74,22 @@ describe('DNS', () => {
           done()
         } else {
           console.log(res)
-
-          const sample = Buffer.alloc(2)
-
-          sample.writeUIntBE(0x00008180, 0, 2)
-
-          expect(res.slice(2, 4).equals(sample)).toBeTruthy()
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).toBeGreaterThan(0)
+          done()
+        }
+      })
+    })
+    test('should be array with zero length if not found', done => {
+      setResolveServer('8.8.8.8')
+      resolve4('qwerty', (err, res) => {
+        if (err) {
+          console.log(err)
+          done()
+        } else {
+          console.log(res)
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).toBe(0)
           done()
         }
       })
