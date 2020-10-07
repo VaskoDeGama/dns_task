@@ -19,6 +19,9 @@ describe('DNS', () => {
       expect(setResolveServer('1.1')).toBe(false)
       expect(setResolveServer(4)).toBe(false)
     })
+    afterAll(() => {
+      setResolveServer('set null this plz')
+    })
   })
 
   describe('RESOLVE4', () => {
@@ -42,11 +45,14 @@ describe('DNS', () => {
       })
     })
     test('should be err if resolveServerAddress not set', done => {
+      setResolveServer('set null this plz')
+
       resolve4('google.com', (err) => {
         if (err) {
           expect(err.message).toBe('Resolve server Address not set')
           done()
         } else {
+          done()
         }
       })
     })
@@ -191,13 +197,13 @@ describe('DNS', () => {
     })
     test('Another test 2', done => {
       setResolveServer('1.1.1.1')
-      resolve4('nodejs.org', (err, res) => {
+      resolve4('mail.'.repeat(50) + 'ru', (err, res) => {
         if (err) {
           console.log(err)
         } else {
           console.log(res)
           expect(Array.isArray(res)).toBeTruthy()
-          expect(res.length).not.toBe(0)
+          expect(res.length).toBe(0)
 
           done()
         }
@@ -211,6 +217,57 @@ describe('DNS', () => {
   describe('RESOLVE6', () => {
     test('will be define', () => {
       expect(resolve6).toBeDefined()
+    })
+    test('should be something 1', done => {
+      setResolveServer('1.1.1.1')
+      resolve6('google.com', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+          expect(res).toBeDefined()
+          done()
+        }
+      })
+    })
+
+    test('should be something 2', done => {
+      setResolveServer('1.1.1.1')
+      resolve6('mail.ru', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+          expect(res).toBeDefined()
+          done()
+        }
+      })
+    })
+    test('should be something 3', done => {
+      setResolveServer('8.8.8.8')
+      resolve6('add.google.com', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+
+          expect(res).toBeDefined()
+          done()
+        }
+      })
+    })
+    test('should be something 4 ', done => {
+      setResolveServer('1.1.1.1')
+      resolve6('google.com', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+
+          expect(res).toBeDefined()
+          done()
+        }
+      })
     })
   })
 })
