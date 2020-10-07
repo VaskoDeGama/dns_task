@@ -22,6 +22,9 @@ describe('DNS', () => {
   })
 
   describe('RESOLVE4', () => {
+    beforeAll(() => {
+      udpServer(1234, '127.0.0.1')
+    }, 3000)
     test('will be define', () => {
       expect(resolve4).toBeDefined()
     })
@@ -66,6 +69,7 @@ describe('DNS', () => {
         }
       })
     })
+
     test('filtering nose', done => {
       setResolveServer('127.0.0.1:1234')
       resolve4('google.com', (err, res) => {
@@ -152,6 +156,19 @@ describe('DNS', () => {
           console.log(res)
           expect(Array.isArray(res)).toBeTruthy()
           expect(res.length).toBe(0)
+          done()
+        }
+      })
+    })
+    test('Message compression (query not work)', done => {
+      setResolveServer('10.1.30.1')
+      resolve4('google.mail.google.mail.google.mail.google.mail.google.mail.google.mail.ru', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).not.toBe(0)
           done()
         }
       })

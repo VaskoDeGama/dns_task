@@ -25,13 +25,44 @@ let resolveServerAddress = null
  * @return {Buffer} - contains  Domain Name Filed for query
  */
 const prepareDomainNameFiled = (address) => {
-  const parsedAddress = address.split('.').map(item => {
-    const buf = Buffer.alloc(1, item.length, 'hex')
+  let domainNameField = Buffer.alloc(0)
+  const domainsArray = address.split('.')
 
-    return Buffer.concat([buf, Buffer.from(item)])
+  domainsArray.forEach(item => {
+    const fieldLength = Buffer.alloc(1, item.length, 'hex')
+    const field = Buffer.from(item)
+
+    domainNameField = Buffer.concat([domainNameField, fieldLength, field])
   })
 
-  return Buffer.concat(parsedAddress)
+  return domainNameField
+}
+
+/**
+ * Code offset for message compression
+ * +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ * | 1  1|                OFFSET                   |
+ * +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ * @param {Buffer} buffer - message for compression
+ * @param {Buffer} bufferedDomain buffered domain name
+ * @return {Buffer} - buffered offset
+ */
+const codeOffsetLink = (buffer, bufferedDomain) => {
+  const offset = parseInt(buffer.indexOf(bufferedDomain).toString(2).padStart(14, '0').padStart(16, '1'), 2).toString(16)
+
+  return Buffer.from(offset, 'hex')
+}
+
+/**
+ * Decode offset for message compression
+ * +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ * | 1  1|                OFFSET                   |
+ * +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
+ * @param {Buffer} offsetLink - offsetLnk for decode
+ * @return {number} - domain offset in message
+ */
+const decodeOffsetLink = (offsetLink) => {
+  return parseInt(parseInt(offsetLink.toString('hex'), 16).toString(2).slice(2), 2)
 }
 
 /**
@@ -59,6 +90,7 @@ const generateReq = (address, reqType) => {
 
   const id = (Math.floor(Math.random() * ((1000 - 2) + 1))).toString(16).padStart(4, '0')
   const flagStr = (QR_QUERY.toString(2) + OPCODE_QUERY.toString(2).padStart(4, '0') + RECURSION_DESIRED.toString(2) + '00')
+
   const [byteOne, byteTwo] = flagStr.match(/.{4}/g)
 
   const query = prepareDomainNameFiled(address)
@@ -101,7 +133,7 @@ const itDns = (res) => {
 /**
  * Answer object
  * @typedef {Object} answerObject
- * @property {Buffer} linkToName - buffer 'c0 0c' where 0c it hex offset on Domain name in request
+ * @property {number} nameOffset - buffer 'c0 0c' where 0c it hex offset on Domain name in request
  * @property {number} type - record type A === 1 or AAAA === 28
  * @property {number} dataLength - ip data  length
  * @property {Buffer} data - buffered ip data
@@ -113,13 +145,13 @@ const itDns = (res) => {
  * @return {answerObject}
  */
 const parseAnswer = (answer) => {
-  const linkToName = answer.slice(0, 2)
+  const nameOffset = decodeOffsetLink(answer.slice(0, 2))
   const type = answer.readUInt16BE(2)
   const dataLength = answer.readUInt16BE(10)
   const data = answer.slice(12, 12 + dataLength)
 
   return {
-    linkToName,
+    nameOffset,
     type,
     dataLength,
     data
@@ -138,7 +170,7 @@ const decodeRes = (res, reqLength, domainName, type) => {
   const temp = []
 
   const answersCount = res.readUInt16BE(6)
-  const linkOnNeededDomain = Buffer.from(`c0${res.indexOf(domainName).toString(16).padStart(2, '0')}`, 'hex')
+  const linkOnNeededDomain = codeOffsetLink(res, domainName)
 
   if (answersCount > 0) {
     let answers = res.slice(reqLength, res.length)
