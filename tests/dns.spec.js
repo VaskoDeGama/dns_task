@@ -218,32 +218,34 @@ describe('DNS', () => {
     test('will be define', () => {
       expect(resolve6).toBeDefined()
     })
-    test('should be something 1', done => {
+    test('should be array not zero 1', done => {
       setResolveServer('1.1.1.1')
       resolve6('google.com', (err, res) => {
         if (err) {
           console.log(err)
         } else {
           console.log(res)
-          expect(res).toBeDefined()
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).not.toBe(0)
           done()
         }
       })
     })
 
-    test('should be something 2', done => {
+    test('should be array not zero  2', done => {
       setResolveServer('1.1.1.1')
       resolve6('mail.ru', (err, res) => {
         if (err) {
           console.log(err)
         } else {
           console.log(res)
-          expect(res).toBeDefined()
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).not.toBe(0)
           done()
         }
       })
     })
-    test('should be something 3', done => {
+    test('should be array and zero length', done => {
       setResolveServer('8.8.8.8')
       resolve6('add.google.com', (err, res) => {
         if (err) {
@@ -251,20 +253,21 @@ describe('DNS', () => {
         } else {
           console.log(res)
 
-          expect(res).toBeDefined()
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).toBe(0)
           done()
         }
       })
     })
-    test('should be something 4 ', done => {
+    test('should be array and not zero 4 ', done => {
       setResolveServer('1.1.1.1')
       resolve6('google.com', (err, res) => {
         if (err) {
           console.log(err)
         } else {
           console.log(res)
-
-          expect(res).toBeDefined()
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).not.toBe(0)
           done()
         }
       })
