@@ -4,37 +4,46 @@ const getResponseId = (res) => {
   return res.slice(0, 2)
 }
 
-const udpServer = (port, address) => {
-  const server = udp.createSocket('udp4')
+class UdpTestServer {
+  constructor (port, address) {
+    this.port = port
+    this.address = address
+    this.server = null
 
-  server.on('error', (err) => {
-    console.log('Error:', err)
-  })
-  server.on('message', (msg, rinfo) => {
-    console.log(msg)
+    this.init()
+  }
 
-    const { address, port } = rinfo
+  init () {
+    if (!this.server) {
+      this.server = udp.createSocket('udp4')
+      this.server.on('error', (err) => {
+        console.log('Error:', err)
+      })
+      this.server.on('message', (msg, rinfo) => {
+        const { address, port } = rinfo
 
-    server.send('msg', port, address)
+        this.server.send('msg', port, address)
 
-    const message = Buffer.from('818000010006000000000377777706676f6f676c6503636f6d0000010001c00c00010001000001230004adc2496ac00c00010001000001230004adc24969c00c00010001000001230004adc24993c00c00010001000001230004adc24963c00c00010001000001230004adc24967c00c00010001000001230004adc24968', 'hex')
-    const response = Buffer.concat([getResponseId(msg), message])
+        const message = Buffer.from('818000010006000000000377777706676f6f676c6503636f6d0000010001c00c00010001000001230004adc2496ac00c00010001000001230004adc24969c00c00010001000001230004adc24993c00c00010001000001230004adc24963c00c00010001000001230004adc24967c00c00010001000001230004adc24968', 'hex')
+        const response = Buffer.concat([getResponseId(msg), message])
 
-    console.log(response)
+        this.server.send(response, port, address)
+      })
+      this.server.on('listening', () => {
+        const address = this.server.address()
 
-    server.send(response, port, address, () => {
-      console.log('Close server')
-      server.close()
-    })
-  })
+        console.log(`server listening ${address.address}:${address.port}`)
+      })
+    }
+  }
 
-  server.on('listening', () => {
-    const address = server.address()
+  start () {
+    this.server.bind(this.port, this.address)
+  }
 
-    console.log(`server listening ${address.address}:${address.port}`)
-  })
-
-  server.bind(port, address)
+  stop () {
+    this.server.close()
+  }
 }
 
-module.exports = udpServer
+module.exports = UdpTestServer

@@ -1,4 +1,4 @@
-const udpServer = require('../src/udpTestServer')
+const UdpTestServer = require('../src/udpTestServer')
 const { resolve4, resolve6, setResolveServer } = require('../src/dns')
 
 describe('DNS', () => {
@@ -22,8 +22,11 @@ describe('DNS', () => {
   })
 
   describe('RESOLVE4', () => {
+    let server = null
+
     beforeAll(() => {
-      udpServer(1234, '127.0.0.1')
+      server = new UdpTestServer(1234, '127.0.0.1')
+      server.start()
     }, 3000)
     test('will be define', () => {
       expect(resolve4).toBeDefined()
@@ -173,6 +176,36 @@ describe('DNS', () => {
         }
       })
     })
+    test('Another test', done => {
+      setResolveServer('1.1.1.1')
+      resolve4('xyz.xyz', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).not.toBe(0)
+          done()
+        }
+      })
+    })
+    test('Another test 2', done => {
+      setResolveServer('1.1.1.1')
+      resolve4('nodejs.org', (err, res) => {
+        if (err) {
+          console.log(err)
+        } else {
+          console.log(res)
+          expect(Array.isArray(res)).toBeTruthy()
+          expect(res.length).not.toBe(0)
+
+          done()
+        }
+      })
+    })
+    afterAll(() => {
+      server.stop()
+    }, 4000)
   })
 
   describe('RESOLVE6', () => {
