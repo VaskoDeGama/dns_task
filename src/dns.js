@@ -1,4 +1,4 @@
-const UdpClient = require('./udpClient')
+const DNSClient = require('./udpClient')
 
 const TYPE_A = 1
 const TYPE_AAAA = 28
@@ -22,9 +22,9 @@ const resolve4 = (address, cb) => {
 
   if (resolveServerAddress) {
     const [dnsAddress, dnsPort] = resolveServerAddress.split(':')
-    const client = new UdpClient(dnsPort, dnsAddress, cb, TYPE_A)
+    const dnsClient = new DNSClient(dnsPort, dnsAddress, cb, TYPE_A)
 
-    client.search(address)
+    dnsClient.search(address)
   } else {
     cb(new Error('Resolve server Address not set'))
   }
@@ -41,9 +41,9 @@ const resolve6 = (address, cb) => {
 
   if (resolveServerAddress) {
     const [dnsAddress, dnsPort] = resolveServerAddress.split(':')
-    const client = new UdpClient(dnsPort, dnsAddress, cb, TYPE_AAAA)
+    const dnsClient = new DNSClient(dnsPort, dnsAddress, cb, TYPE_AAAA)
 
-    client.search(address)
+    dnsClient.search(address)
   } else {
     cb(new Error('Resolve server Address not set'))
   }

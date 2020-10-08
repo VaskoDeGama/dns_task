@@ -8,7 +8,14 @@ const QR_QUERY = 0
 const OPCODE_QUERY = 0
 const RECURSION_DESIRED = 1
 
-class udpClient {
+class DNSClient {
+  /**
+   * DNSClient constructor
+   * @param {number} dnsPort
+   * @param {str} dnsAddress
+   * @param {function} resultCb
+   * @param {number} type
+   */
   constructor (dnsPort, dnsAddress, resultCb, type) {
     this.client = null
     this.port = dnsPort
@@ -21,6 +28,9 @@ class udpClient {
     this.init()
   }
 
+  /**
+   * Initialize client
+   */
   init () {
     if (!this.client) {
       this.client = udp.createSocket('udp4')
@@ -28,6 +38,10 @@ class udpClient {
     }
   }
 
+  /**
+   * Request ip by type from dns server
+   * @param {string} searchAddress - needed domain
+   */
   search (searchAddress) {
     this.client.on('message', (msg) => {
       const id = this.getResponseId(msg)
@@ -58,11 +72,18 @@ class udpClient {
     this.client.connect(this.port, this.address)
   }
 
+  /**
+   * Send request and start timer
+   * @param {Buffer} msg - request message
+   */
   sendRequest (msg) {
     this.client.send(msg)
     this.timer()
   }
 
+  /**
+   * Start timer
+   */
   timer () {
     this.timeout = setTimeout(() => {
       this.client.close(() => {
@@ -189,7 +210,7 @@ class udpClient {
    * @property {number} nameOffset - buffer 'c0 0c' where 0c it hex offset on Domain name in request
    * @property {number} type - record type A === 1 or AAAA === 28
    * @property {number} dataLength - ip data  length
-   * @property {Buffer} data - buffered ip data
+   * @property {string} ip - buffered ip data
    */
 
   /**
@@ -211,6 +232,12 @@ class udpClient {
     }
   }
 
+  /**
+   * Decode ipv4 and ipv6
+   * @param {Buffer} rawData
+   * @param type
+   * @return {string|*}
+   */
   decodeIp (rawData, type) {
     if (type === TYPE_A) {
       const str = rawData.toString('hex')
@@ -233,11 +260,9 @@ class udpClient {
       for (let i = 0; i < str.length; i += 4) {
         const hextet = str.slice(i, i + 4)
 
-        if (hextet !== '0000') {
-          ipv6.push(hextet)
-        } else {
-          ipv6.push('0')
-        }
+        const zeroHextet = hextet === '0000' ? '0' : hextet
+
+        ipv6.push(zeroHextet)
 
         if (i + 4 !== str.length) {
           ipv6.push(':')
@@ -286,4 +311,4 @@ class udpClient {
   }
 }
 
-module.exports = udpClient
+module.exports = DNSClient
