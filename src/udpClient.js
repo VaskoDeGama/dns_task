@@ -233,6 +233,25 @@ class DNSClient {
   }
 
   /**
+   * Trim leading zero from hexed number
+   * @param {string} str - string with leading zero
+   * @return {string} - string  with out leading zero
+   */
+  trimLeadingZero (str) {
+    const array = [...str]
+
+    for (let i = 0; i < array.length - 1; i += 1) {
+      if (array[i] === '0') {
+        array[i] = ''
+      } else {
+        break
+      }
+    }
+
+    return array.join('')
+  }
+
+  /**
    * Decode ipv4 and ipv6
    * @param {Buffer} rawData
    * @param type
@@ -260,7 +279,7 @@ class DNSClient {
       for (let i = 0; i < str.length; i += 4) {
         const hextet = str.slice(i, i + 4)
 
-        const zeroHextet = hextet === '0000' ? '0' : hextet
+        const zeroHextet = this.trimLeadingZero(hextet)
 
         ipv6.push(zeroHextet)
 
