@@ -1,8 +1,9 @@
 const udp = require('dgram')
-const ip6addr = require('ip6addr')
 
 const RESOLVE_TIMEOUT = 2000
 
+const TYPE_A = 1
+const TYPE_AAAA = 28
 const QR_QUERY = 0
 const OPCODE_QUERY = 0
 const RECURSION_DESIRED = 1
@@ -200,14 +201,53 @@ class udpClient {
     const nameOffset = this.decodeOffsetLink(answer.slice(0, 2))
     const type = answer.readUInt16BE(2)
     const dataLength = answer.readUInt16BE(10)
-    const data = answer.slice(12, 12 + dataLength)
+    const ip = this.decodeIp(answer.slice(12, 12 + dataLength), type)
 
     return {
       nameOffset,
       type,
       dataLength,
-      data
+      ip
     }
+  }
+
+  decodeIp (rawData, type) {
+    if (type === TYPE_A) {
+      const str = rawData.toString('hex')
+      const ipv4 = []
+
+      for (let i = 0; i < str.length; i += 2) {
+        const octet = str.slice(i, i + 2)
+        const num = parseInt(octet, 16)
+
+        ipv4.push(num)
+      }
+
+      return ipv4.join('.')
+    }
+
+    if (type === TYPE_AAAA) {
+      const ipv6 = []
+      const str = rawData.toString('hex')
+
+      for (let i = 0; i < str.length; i += 4) {
+        const hextet = str.slice(i, i + 4)
+
+        if (hextet !== '0000') {
+          ipv6.push(hextet)
+        } else {
+          ipv6.push('0')
+        }
+
+        if (i + 4 !== str.length) {
+          ipv6.push(':')
+        }
+      }
+
+      return ipv6.join('')
+    }
+
+    return rawData
   }
 
   /**
@@ -237,18 +277,12 @@ class udpClient {
         answers = answers.slice(answer.dataLength + 12, answers.length)
 
         if (answer.type === type) {
-          temp.push(answer)
+          temp.push(answer.ip)
         }
       }
     }
 
-    if (type === 1) {
-      return temp.map(({ data }) => [...data.values()].join('.')).sort()
-    }
-
-    return temp.map(({ data }) => {
-      return ip6addr.parse(data.toString('hex').match(/.{4}/g).join(':')).toString({ format: 'auto' })
-    })
+    return temp.sort()
   }
 }
 
