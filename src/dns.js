@@ -1,4 +1,4 @@
-const DNSClient = require('./udpClient')
+const DNSClient = require('./dnsClient')
 
 const TYPE_A = 1
 const TYPE_AAAA = 28

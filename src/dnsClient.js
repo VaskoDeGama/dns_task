@@ -122,9 +122,14 @@ class DNSClient {
    * @return {Buffer} - buffered offset
    */
   codeOffsetLink (buffer, bufferedDomain) {
-    const offset = parseInt(buffer.indexOf(bufferedDomain).toString(2).padStart(14, '0').padStart(16, '1'), 2).toString(16)
+    const offset = buffer.indexOf(bufferedDomain)
+    const mask = parseInt('11'.padEnd(16, '0'), 2)
 
-    return Buffer.from(offset, 'hex')
+    console.log(offset)
+
+    const binaryCode = (mask | offset).toString(16)
+
+    return Buffer.from(binaryCode, 'hex')
   }
 
   /**
@@ -136,7 +141,10 @@ class DNSClient {
    * @return {number} - domain offset in message
    */
   decodeOffsetLink (offsetLink) {
-    return parseInt(parseInt(offsetLink.toString('hex'), 16).toString(2).slice(2), 2)
+    const binaryCode = parseInt(offsetLink.toString('hex'), 16)
+    const mask = parseInt('11'.padEnd(16, '0'), 2)
+
+    return binaryCode - mask
   }
 
   /**
